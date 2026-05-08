@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Environment
+.env
+
+# Sample DICOM data (too large for git)
+sample_data/
+*.dcm
+
+# ML models
+backend/app/ml/models/*.pkl
+
+# Database
+*.db
