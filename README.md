@@ -1,155 +1,181 @@
 # MedVault
 
-**A smart DICOM medical image research assistant — built solo, from scratch.**
+> A smart DICOM medical image research assistant — ML-powered auto-albuming, anomaly detection, and in-browser image viewing.
 
-[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
-[![Flask](https://img.shields.io/badge/Flask-3.x-black.svg)](https://flask.palletsprojects.com)
-[![React](https://img.shields.io/badge/React-18-61DAFB.svg)](https://react.dev)
-[![scikit--learn](https://img.shields.io/badge/scikit--learn-1.x-orange.svg)](https://scikit-learn.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/aasthathakkar/MedVault/actions/workflows/ci.yml/badge.svg)](https://github.com/aasthathakkar/MedVault/actions)
+[![Python](https://img.shields.io/badge/python-3.14-blue)](https://python.org)
+[![Flask](https://img.shields.io/badge/flask-3.0.3-green)](https://flask.palletsprojects.com)
+[![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
+
+**[Live Demo →](https://medvault.app)** | **[API Docs →](docs/API.md)** | **[Architecture →](docs/ARCHITECTURE.md)**
 
 ---
 
-## The Problem
+## What is MedVault?
 
-Medical researchers routinely end up with thousands of loose `.dcm` (DICOM) files dumped in a folder after a study export — no structure, no way to browse them, no way to tell which ones are corrupt, and no easy way to share a subset with a collaborator. Sorting through them by hand doesn't scale.
+Medical researchers work with thousands of DICOM files (.dcm) stored in unorganized local folders. Finding specific scans, grouping them into research collections, checking for corrupt images, and sharing them with colleagues is entirely manual — and it's slow.
 
-## What MedVault Does
+MedVault automates the entire workflow:
 
-MedVault turns a messy folder of DICOM files into a searchable, organized, shareable research workspace:
+1. **Index** — point it at any local folder, it scans every DICOM file and extracts metadata into a queryable database
+2. **Auto-album** — DBSCAN clustering automatically suggests meaningful groupings ("CT · Chest · 2023-24") with confidence scores
+3. **Quality check** — IsolationForest flags corrupt or low-quality images before they pollute your research dataset
+4. **View** — click any file to view it in the browser via Cornerstone.js (no downloads needed)
+5. **Share** — generate password-protected links with optional expiry; every access is logged with IP, device, and timestamp
 
-1. **Indexes** every `.dcm` file in a folder, extracting metadata (modality, body part, study date, etc.) without needing to touch pixel data unless it's actually needed.
-2. **Suggests albums automatically** using unsupervised ML — clustering files by metadata similarity instead of making you write filter rules by hand.
-3. **Flags likely-bad files** — corrupt, blank, or statistical outliers — before you waste time downloading or sharing them, using an anomaly-detection model trained on pixel statistics.
-4. **Renders images in the browser** via an embedded DICOM viewer — no desktop software required.
-5. **Exports or shares albums** through secure, optionally password-protected, expiring links.
+---
 
-This is a from-scratch, independent build — not a fork. The problem domain grew out of earlier open-source work in this space (see *Background* below), but the schema, API design, and both ML features here are original.
+## Features
 
-## Key Features
+### Core pipeline
+- Recursive DICOM folder indexer — handles corrupt files gracefully (logged, never crashes)
+- Filter-based album creation — by modality, PatientID, date range, body part
+- Optional Niffler CSV import for hospital PACS workflow compatibility
+- Zip export with auto-generated `summary.json`
 
-| Feature | What it does |
+### ML features
+- **Auto-albuming** — DBSCAN on metadata feature vectors; no cluster count needed; noise handled natively
+- **Quality detection** — IsolationForest on pixel statistics (mean intensity, std dev, zero-pixel ratio, Shannon entropy); model persisted with joblib
+
+### Security
+- UUID v4 shareable tokens (122 bits — unguessable)
+- Optional password protection (PBKDF2+SHA256 via Werkzeug — never plaintext)
+- Optional link expiry enforced server-side
+- Full audit trail — every link access logs IP, device, timestamp, and password success/fail
+- Canvas watermark on Cornerstone.js viewer — every screenshot is traceable
+
+### Developer quality
+- 60+ pytest cases
+- GitHub Actions CI — tests run on every push
+- Consistent API response envelope: `{"success": true/false, "data": ..., "error": ...}`
+- Docker support
+- SQLite for dev, PostgreSQL-ready for production (change `DATABASE_URL` only)
+
+---
+
+## Tech stack
+
+| Layer | Technologies |
 |---|---|
-| Recursive DICOM indexer | Walks a folder tree, parses every `.dcm` file, extracts metadata into a queryable database, logs unreadable files instead of crashing |
-| Album management | Group files into named, renameable collections |
-| 🧠 Smart auto-albuming (ML) | DBSCAN clustering suggests album groupings from metadata — accept, reject, or rename each one |
-| 🧠 Quality anomaly detection (ML) | IsolationForest flags likely-corrupt or outlier images from pixel statistics |
-| In-browser DICOM viewer | View scans directly, no desktop viewer needed |
-| Secure sharing | UUID share links, optional password, optional expiry |
-| Zip export | Download an album as a single archive |
-| Niffler CSV import | Secondary ingestion path for CSV-based file manifests |
+| Backend | Python 3.14, Flask 3.0.3, SQLAlchemy 2.0.30, SQLite / PostgreSQL |
+| DICOM | pydicom |
+| ML | scikit-learn (DBSCAN, IsolationForest), numpy, scipy, pandas, joblib |
+| Frontend | React 18, Tailwind CSS, Cornerstone.js, React Router, Axios |
+| Infra | Docker, GitHub Actions, Render / Railway |
 
-## Tech Stack
+---
 
-| Layer | Technology | Why |
-|---|---|---|
-| Backend | Flask (application factory pattern) | Lightweight and explicit; easy to structure into blueprints as the app grows |
-| ORM / DB | SQLAlchemy — SQLite (dev), PostgreSQL (prod) | DB-agnostic models; swap engines with one env var |
-| DICOM parsing | pydicom | The standard Python library for reading DICOM metadata and pixel arrays |
-| ML | scikit-learn (DBSCAN, IsolationForest) | Both features are unsupervised — no labeled medical data needed |
-| Frontend | React (Vite) | Fast dev loop, component-based UI for dashboard/albums/reports |
-| DICOM viewer | Cornerstone3D (`@cornerstonejs/core`) | Purpose-built, actively maintained library for rendering medical images in-browser |
-| Deployment | Docker + a managed host (Render/Railway) | Containerized and reproducible; see `docs/ARCHITECTURE.md` §7 for hosting trade-offs |
+## Quick start
 
-## Architecture at a Glance
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- pip
 
-```mermaid
-flowchart TB
-    subgraph Client
-        UI[React Dashboard]
-        Viewer[Cornerstone3D Viewer]
-    end
-    subgraph API[Flask REST API]
-        A1[albums]
-        A2[files]
-        A3[ml]
-        A4[share]
-    end
-    subgraph Services
-        S1[Indexer]
-        S2[Clustering - DBSCAN]
-        S3[Quality - IsolationForest]
-        S5[Share]
-    end
-    subgraph Data
-        DB[(SQLite / PostgreSQL)]
-        FS[(Local filesystem)]
-    end
-    UI --> A1
-    UI --> A2
-    UI --> A3
-    UI --> A4
-    Viewer --> A2
-    A1 --> DB
-    A2 --> FS
-    A2 --> DB
-    A3 --> S2
-    A3 --> S3
-    A4 --> S5
-    S1 --> FS
-    S1 --> DB
-    S2 --> DB
-    S3 --> DB
-    S5 --> DB
-```
-
-Full breakdown, data flow diagrams, and design rationale: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-
-## Project Structure
-
-```
-medvault/
-├── backend/
-│   ├── app/
-│   │   ├── __init__.py          # app factory
-│   │   ├── models/               # SQLAlchemy models
-│   │   ├── api/                  # blueprints: albums, files, ml, share, health
-│   │   ├── services/             # indexer, export, share logic
-│   │   └── ml/                   # clustering.py, quality.py, models/ (joblib artifacts)
-│   ├── tests/
-│   ├── config.py
-│   └── run.py
-├── frontend/
-│   └── src/
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── API.md
-│   ├── ML.md
-│   └── ROADMAP.md
-└── README.md
-```
-
-## Getting Started
-
-> Backend and frontend scaffolding are in progress — this section fills in with real install/run steps as Week 1–2 land. Planned shape:
+### 1. Clone and set up backend
 
 ```bash
-# Backend
 git clone https://github.com/aasthathakkar/MedVault.git
-cd MedVault/backend
-python -m venv med_vault && source med_vault/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-flask db upgrade
-python run.py
-
-# Frontend
-cd ../frontend
-npm install
-npm run dev
+cd MedVault
+python3 -m venv med_vault
+source med_vault/bin/activate
+pip install -r backend/requirements.txt
 ```
 
-## Documentation
+### 2. Configure environment
 
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system design, data flow diagrams, ERD, and design decisions
-- [`docs/API.md`](docs/API.md) — full REST API reference
-- [`docs/ML.md`](docs/ML.md) — how the clustering and anomaly-detection models work
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — week-by-week build plan
+```bash
+cp backend/.env.example backend/.env
+# Edit backend/.env and set SECRET_KEY
+```
 
-## Background
+### 3. Run the demo seed (loads sample DICOM data)
 
-The problem domain — organizing large sets of loose DICOM research files — came out of earlier open-source work in this space. MedVault's schema, API, and ML layer are an independent, from-scratch build; edit or remove this section depending on how you'd like to credit that background.
+```bash
+python backend/scripts/seed_demo.py
+```
+
+### 4. Start the backend
+
+```bash
+cd backend
+flask run
+# API running at http://localhost:5000
+```
+
+### 5. Start the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+# UI running at http://localhost:5173
+```
+
+Open [http://localhost:5173](http://localhost:5173) — you should see the MedVault dashboard with sample data loaded.
+
+---
+
+## Running tests
+
+```bash
+cd backend
+pytest tests/ -v
+```
+
+---
+
+## Project structure
+
+```
+MedVault/
+├── backend/
+│   ├── app/
+│   │   ├── api/            ← Flask route blueprints
+│   │   ├── models/         ← SQLAlchemy models (7 tables)
+│   │   ├── services/       ← business logic
+│   │   ├── ml/             ← DBSCAN + IsolationForest
+│   │   └── utils/          ← helpers
+│   ├── tests/
+│   ├── scripts/
+│   │   └── seed_demo.py
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   └── src/
+│       ├── pages/          ← Dashboard, Albums, Viewer, Suggestions
+│       └── components/
+├── docs/
+│   ├── API.md
+│   └── ARCHITECTURE.md
+└── sample_data/            ← gitignored
+```
+
+---
+
+## Enterprise roadmap
+
+MedVault currently operates in personal/local mode — no login required. For institutional adoption, the following enterprise features are designed and documented:
+
+- Institute email domain restriction (`@hospital.org` only)
+- Role-based access control (Researcher vs Viewer)
+- Admin dashboard — manage users, revoke tokens, export audit logs
+- Domain-restricted sharing — links tied to verified user emails
+
+---
+
+## Honest limitations
+
+- **Not HIPAA compliant** — built for research use with public DICOM datasets
+- **Single user** — no authentication for the main app; security is at the sharing layer
+- **IsolationForest tuning** — contamination parameter may need adjustment per dataset/modality
+
+---
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [LICENSE](LICENSE)
+
+---
+
+*Built by [Aastha Thakkar](https://github.com/aasthathakkar) — IIIT Vadodara, 2026*
