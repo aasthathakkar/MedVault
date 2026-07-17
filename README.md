@@ -149,22 +149,3 @@ MedVault/
 ```
 
 ---
-
-## Enterprise roadmap
-
-MedVault currently operates in personal/local mode — no login required. For institutional adoption, the following enterprise features are designed and documented:
-
-- Institute email domain restriction (`@hospital.org` only)
-- Role-based access control (Researcher vs Viewer)
-- Admin dashboard — manage users, revoke tokens, export audit logs
-- Domain-restricted sharing — links tied to verified user emails
-
----
-
-## Honest limitations
-
-- **Not HIPAA compliant** — built for research use with public DICOM datasets
-- **Single user** — no authentication for the main app; security is at the sharing layer
-- **IsolationForest tuning** — contamination parameter may need adjustment per dataset/modality
-
----
