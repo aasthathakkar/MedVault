@@ -111,9 +111,6 @@ npm install
 npm run dev
 # UI running at http://localhost:5173
 ```
-
-Open [http://localhost:5173](http://localhost:5173) — you should see the MedVault dashboard with sample data loaded.
-
 ---
 
 ## Running tests
@@ -171,11 +168,3 @@ MedVault currently operates in personal/local mode — no login required. For in
 - **IsolationForest tuning** — contamination parameter may need adjustment per dataset/modality
 
 ---
-
-## License
-
-MIT — see [LICENSE](LICENSE)
-
----
-
-*Built by [Aastha Thakkar](https://github.com/aasthathakkar) — IIIT Vadodara, 2026*
