@@ -7,7 +7,7 @@
 [![Flask](https://img.shields.io/badge/flask-3.0.3-green)](https://flask.palletsprojects.com)
 [![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
 
-**[Live Demo →](https://medvault.app)** | **[API Docs →](docs/API.md)** | **[Architecture →](docs/ARCHITECTURE.md)**
+**[API Docs →](docs/API.md)** | **[Architecture →](docs/ARCHITECTURE.md)**
 
 ---
 
